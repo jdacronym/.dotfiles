@@ -23,7 +23,7 @@
 (require 'package)
 (setq package-archives
       '(("melpa" . "http://melpa.milkbox.net/packages/")
-	("melpa-stable" . "http://stable.melpa.org/packages/")))
+        ("melpa-stable" . "http://stable.melpa.org/packages/")))
 (package-initialize)
 
 ;;;;; which-key (where does #'use-package come from?)
@@ -50,12 +50,12 @@
 (defun env-fix-path ()
   (interactive)
   (setenv "PATH"
-	  (concat "/opt/local/bin:/opt/local/sbin:/usr/local/bin:/usr/local/sbin:"
-		  "/usr/local/Cellar/erlang/18.2.1/lib/erlang/man/:"
-		  (getenv "PATH"))))
+          (concat "/opt/local/bin:/opt/local/sbin:/usr/local/bin:/usr/local/sbin:"
+                  "/usr/local/Cellar/erlang/18.2.1/lib/erlang/man/:"
+                  (getenv "PATH"))))
 
 (add-to-list 'woman-manpath
-	     "/usr/local/Cellar/erlang/18.2.1/lib/erlang/man/")
+             "/usr/local/Cellar/erlang/18.2.1/lib/erlang/man/")
 
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
@@ -97,22 +97,22 @@
      (unless process
        (error "There's no process for this target"))
      (let* ((server (car (process-contact process)))
-	    (port (process-contact process :service))
-	    (nick (rcirc-nick process))
-	    channels query-buffers)
+            (port (process-contact process :service))
+            (nick (rcirc-nick process))
+            channels query-buffers)
        (dolist (buf (buffer-list))
-	 (with-current-buffer buf
-	   (when (eq process (rcirc-buffer-process))
-	     (remove-hook 'change-major-mode-hook
-			  'rcirc-change-major-mode-hook)
-	     (if (rcirc-channel-p rcirc-target)
-		 (setq channels (cons rcirc-target channels))
-	       (setq query-buffers (cons buf query-buffers))))))
+         (with-current-buffer buf
+           (when (eq process (rcirc-buffer-process))
+             (remove-hook 'change-major-mode-hook
+                          'rcirc-change-major-mode-hook)
+             (if (rcirc-channel-p rcirc-target)
+                 (setq channels (cons rcirc-target channels))
+               (setq query-buffers (cons buf query-buffers))))))
        (delete-process process)
        (rcirc-connect server port nick
-		      rcirc-default-user-name
-		      rcirc-default-full-name
-		      channels))))
+                      rcirc-default-user-name
+                      rcirc-default-full-name
+                      channels))))
 
 (add-hook 'rcirc-mode-hook (lambda () (rcirc-track-minor-mode 1)))
 
