@@ -21,23 +21,55 @@
             ('t (delete-window win)))))
 
 ;; network stuff
+(defvar curl-url "")
+(defvar curl-post-body "")
+
+(defun curl-reset-defaults ()
+  (interactive)
+  (setq curl-url "")
+  (setq curl-post-body ""))
+
+(defun curl-post-opts (body &optional content-type)
+  (concat "-vvv -XPOST "
+	  (if (null content-type)
+	      (concat "--data-urlencode '" body "'")
+	      (concat "--data '" body "' " "-H 'content-type: " content-type "'"))))
+
+(defun do-curl (url opts &optional switch buffer)
+  (let ((buffer-name (if (null buffer) (concat "*curl*<" url ">") buffer)))
+    (setq curl-url url)
+    (async-shell-command (concat "curl " opts " '" url "'") buffer-name)
+    (if switch (switch-to-buffer-other-window buffer-name))))
+
 (defun curl ()
   "GET a given URL. quotes THE URL, so you can use query strings without fear."
   (interactive)
-  (let* ((url (read-string "url: "))
-         (buffer-name (concat "*curl*<" url ">")))
-    (async-shell-command (concat "curl -vvv '" url "'") buffer-name)
-    (switch-to-buffer-other-window buffer-name)))
+  (let ((url (read-string "url: " curl-url))
+	(opts "-vvv"))
+    (setq curl-url url)
+    (do-curl url opts)))
 
 (defun curl-post ()
   "POST a BODY given URL. quotes THE URL, so you can use query strings without fear."
   (interactive)
   (let* ((url (read-string "url: "))
-         (body (read-string "body: "))
+         (body (read-string "body: " curl-post-body))
+	 (opts (curl-post-opts body))
          (buffer-name (concat "*curl*<" url ">")))
-    (async-shell-command (concat "curl -XPOST -vvv '" url "'"
-                                 " --data '" body "'") buffer-name)
-    (switch-to-buffer-other-window buffer-name)))
+    (setq curl-post-body body)
+    (do-curl url opts)))
+
+(defun curl-post-json ()
+  "POST a BODY given URL. quotes THE URL, so you can use query strings without fear."
+  (interactive)
+  (let* ((url (read-string "url: " curl-url))
+         (body (read-string "body: " curl-post-body))
+	 (opts (curl-post-opts body "application/json"))
+         (buffer-name (concat "*curl*<" url ">")))
+    (setq curl-post-body body)
+    (do-curl url opts)))
+
+;;(do-curl slack-external-message-url (curl-post-opts "{\"text\":\"<http://i138.photobucket.com/albums/q255/gavdiggity/Scanners.gif|Mind. Blown.>\", \"icon_emoji\": \":boom:\", \"username\":\"WAT\"}" "application/json"))
 
 (defun window-name (win)
   "buffer-name for windows"
@@ -57,6 +89,17 @@
 (defun buffer-is-visible-p (name)
   (if (not (null (buffer-window-if-visible name))) 't))
 
+(defun showable-shell-window (name prefix command)
+  (let ((cmd (concat prefix command)))
+    (lambda (&optional show)
+      (interactive "P")
+      (if (null show)
+	  (progn
+	    (async-shell-command cmd name)
+	    ;;(close-buffer-window name)
+	    )
+	(select-buffer-window-or-switch name)))))
+
 (defun ping (arg)
   "Ping Google Primary DNS. A reliable connectivity test.
 
@@ -65,7 +108,6 @@ C-u controls number of pings."
   (let ((count (if (null arg) "2" (number-to-string (car arg))))
         (name "*ping*"))
     (message (concat "Starting a sequence of " count " pings"))
-    ;(start-process "ping" "*ping*" "ping" (concat "-c " count) "8.8.8.8")
     (async-shell-command (concat "ping -c" count " 8.8.8.8") name)
     (let* ((win (get-buffer-window name))
            (height (window-height win)))

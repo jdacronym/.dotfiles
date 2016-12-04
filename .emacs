@@ -1,6 +1,13 @@
 (menu-bar-mode -1)
 (tool-bar-mode -1)
 (scroll-bar-mode -1)
+(column-number-mode 1)
+
+(set-face-attribute 'default nil :height 180)
+(set-face-attribute 'mode-line nil :height 160)
+(set-face-attribute 'mode-line-inactive nil :height 140)
+
+(setq-default indent-tabs-mode -1)
 
 (add-to-list 'load-path (concat (getenv "HOME") "/.emacs.d/lisp"))
 
@@ -8,22 +15,24 @@
 (load "cookiejar")
 (load "secrets")
 
-(global-set-key (kbd "C-x p") 'ping)
-(global-set-key (kbd "C-x g") 'magit-status)
+(require 'magit)
+
+(global-set-key (kbd "C-x p") #'ping)
+(eval-after-load 'magit
+  (global-set-key (kbd "C-x g") #'magit-status))
 
 ;; make widnow-navigation easier
-(global-set-key (kbd "M-<left>") #'windmove-left)
-(global-set-key (kbd "M-<right>") #'windmove-right)
-(global-set-key (kbd "M-<up>") #'windmove-up)
-(global-set-key (kbd "M-<down>") #'windmove-down)
+(global-set-key (kbd "C-'") #'other-window)
+(global-set-key (kbd "C-;") #'(lambda () (interactive) (switch-to-buffer (other-buffer))))
+(global-set-key (kbd "C->") #'switch-to-next-buffer)
+(global-set-key (kbd "C-<") #'switch-to-prev-buffer)
 
-(setq browse-url-browser-function 'w3m-goto-url-new-session)
+(setq browse-url-browser-function #'w3m-goto-url-new-session)
 
 ;; packaging
 (require 'package)
-(setq package-archives
-      '(("melpa" . "http://melpa.milkbox.net/packages/")
-        ("melpa-stable" . "http://stable.melpa.org/packages/")))
+(add-to-list 'package-archives '("melpa" . "http://melpa.milkbox.net/packages/"))
+(add-to-list 'package-archives '("melpa-stable" . "http://stable.melpa.org/packages/"))
 (package-initialize)
 
 ;;;;; which-key (where does #'use-package come from?)
@@ -38,30 +47,39 @@
 (add-to-list 'exec-path "/opt/local/bin")
 (add-to-list 'exec-path "/opt/local/sbin")
 
-(setq orig-path (getenv "PATH"))
+(defconst *orig-path* (getenv "PATH") "The original value of the PATH variable")
+(defvar current-paths (split-string *orig-path* ":") "The current path directories")
+
 (setq orig-gem-home (getenv "GEM_HOME"))
 (setq orig-gem-root (getenv "GEM_ROOT"))
 (setq orig-gem-path (getenv "GEM_PATH"))
 
 (defun reset-paths ()
-  (setenv "PATH" orig-path)
+  (interactive)
+  (setenv "PATH" *orig-path*)
+  (setq current-paths (split-string *orig-path* ":"))
   (setenv "GEM_PATH" orig-gem-path))
 
 (defun env-fix-path ()
   (interactive)
-  (setenv "PATH"
-          (concat "/opt/local/bin:/opt/local/sbin:/usr/local/bin:/usr/local/sbin:"
-                  "/usr/local/Cellar/erlang/18.2.1/lib/erlang/man/:"
-                  (getenv "PATH"))))
+  (mapcar #'(lambda (path) (add-to-list 'current-paths path))
+	  ;; this list is in reverse order of how it will appear on the paths
+	  '("/usr/local/sbin"
+	    "/usr/local/bin"
+	    "/opt/local/sbin"
+	    "/opt/local/bin"))
+  (setenv "PATH" (cl-reduce #'(lambda (acc item) (concat acc ":" item)) current-paths)))
 
-(add-to-list 'woman-manpath
-             "/usr/local/Cellar/erlang/18.2.1/lib/erlang/man/")
+(require 'woman)
 
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(custom-safe-themes
+   (quote
+    ("bb4733b81d2c2b5cdec9d89c111ef28a0a8462a167d411ced00a77cfd858def1" "1e90834a232ff3b63c41b00e484754293a5c38d73080ddc6f77db72feb0b2f98" "49b36c626548d200f97144cedb44f0a48020fda221b9e2930dc7d95ef4013eb1" "40f6a7af0dfad67c0d4df2a1dd86175436d79fc69ea61614d668a635c2cd94ab" default)))
  '(inhibit-startup-screen t))
 
 (setq speak-command "say")
@@ -69,12 +87,45 @@
 (defun pry ()
   (interactive)
   (async-shell-command "pry" "*pry*")
-  (switch-to-buffer-other-window "*pry*"))
+  (select-buffer-window-or-switch "*pry*"))
+
+(defvar iex-arg ""
+  "Argument passed to IEx (say, a filename)
+defaults to the empty string")
 
 (defun iex ()
   (interactive)
-  (async-shell-command "iex" "*iex*")
-  (switch-to-buffer-other-window "*iex*"))
+  (async-shell-command "source ~/.bashrc; iex" "*iex*")
+  (select-buffer-window-or-switch "*iex*"))
+
+(defun mix-args-deps-compile ()
+  (interactive)
+  (setq mix-args "deps.compile"))
+
+(defun mix-args-deps-get ()
+  (interactive)
+  (setq mix-args "deps.get"))
+
+(defun mix-args-compile ()
+  (interactive)
+  (setq mix-args "compile"))
+
+(defun mix-args-test ()
+  (interactive)
+  (setq mix-args "test"))
+
+(defun mix-args-help ()
+  (interactive)
+  (setq mix-args "help"))
+
+(defun mix ()
+  (interactive)
+  (let ((name "*mix*"))
+    (async-shell-command (concat "cd " project-directory "; "
+				 "source ~/.bashrc; "
+				 "mix " mix-args)
+			 name)
+    (select-buffer-window-or-switch name)))
 
 (defun clj ()
   "Start the clojure repl using `lein repl`"
@@ -82,13 +133,13 @@
   (async-shell-command "lein repl" "*clojure*")
   (switch-to-buffer-other-window "*clojure*"))
 
-(load "idg")
-
-;; if this doesn't happen, something went wrong above!
-(amber-mode)
+(load-theme 'zenburn)
+;; (load-theme 'ujelly) ; high-contrast alternative
+;; (load-theme 'abyss)  ; high-contrast and slightly angry alternative
 
 ;; rcirc
 (require 'rcirc)
+
 ;; from the rcirc manual
 (eval-after-load 'rcirc
   '(defun-rcirc-command reconnect (arg)
@@ -116,4 +167,6 @@
 
 (add-hook 'rcirc-mode-hook (lambda () (rcirc-track-minor-mode 1)))
 
-(setq rcirc-freenode '("irc.freenode.net" :channels ("#rcirc"))
+;; final user setup
+(env-fix-path)
+
