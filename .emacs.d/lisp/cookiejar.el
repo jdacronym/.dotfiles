@@ -41,33 +41,32 @@
     (async-shell-command (concat "curl " opts " '" url "'") buffer-name)
     (if switch (switch-to-buffer-other-window buffer-name))))
 
-(defun curl ()
+(defun curl (url opts)
   "GET a given URL. quotes THE URL, so you can use query strings without fear."
-  (interactive)
-  (let ((url (read-string "url: " curl-url))
-	(opts "-vvv"))
-    (setq curl-url url)
-    (do-curl url opts)))
+  (interactive
+   (let ((url (read-string "url: " curl-url))
+	 (opts (read-string "opts: " "-vvv")))
+     (list url opts)))
+  (setq curl-url url)
+  (do-curl url opts))
 
-(defun curl-post ()
+(defun curl-post (url body)
   "POST a BODY given URL. quotes THE URL, so you can use query strings without fear."
-  (interactive)
-  (let* ((url (read-string "url: "))
-         (body (read-string "body: " curl-post-body))
-	 (opts (curl-post-opts body))
-         (buffer-name (concat "*curl*<" url ">")))
-    (setq curl-post-body body)
-    (do-curl url opts)))
+  (interactive
+   (let ((url (read-string "url: " curl-url))
+	 (body (read-string "body: " curl-post-body)))
+     (list url body)))
+  (setq curl-post-body body)
+  (do-curl url (curl-post-opts body)))
 
-(defun curl-post-json ()
+(defun curl-post-json (url body)
   "POST a BODY given URL. quotes THE URL, so you can use query strings without fear."
-  (interactive)
-  (let* ((url (read-string "url: " curl-url))
-         (body (read-string "body: " curl-post-body))
-	 (opts (curl-post-opts body "application/json"))
-         (buffer-name (concat "*curl*<" url ">")))
-    (setq curl-post-body body)
-    (do-curl url opts)))
+  (interactive
+   (let ((url (read-string "url: " curl-url))
+	 (body (read-string "body: " curl-post-body)))
+     (list url body)))
+  (setq curl-post-body body)
+  (do-curl url (curl-post-opts body "application/json")))
 
 ;;(do-curl slack-external-message-url (curl-post-opts "{\"text\":\"<http://i138.photobucket.com/albums/q255/gavdiggity/Scanners.gif|Mind. Blown.>\", \"icon_emoji\": \":boom:\", \"username\":\"WAT\"}" "application/json"))
 
