@@ -3,3 +3,32 @@
 .emacs.d/auto-save-list/*
 .emacs.d/tramp
 .emacs.d/newsticker
+.bash_history
+.bash_logout
+.ssh/id_rsa
+.ssh/id_rsa.pub
+.ssh/id_dsa
+.ssh/id_dsa.pub
+.ssh/known_hosts
+tmp/
+*.desktop
+*steam*
+.mozilla/
+.gnome2/
+.compiz/
+.xsession*
+.Xauthority
+.ICEauthority
+.gconf/
+GNUstep/
+Documents/
+Downloads/
+builds/
+.npm/
+
+# games I play
+From\ The\ Depths
+.wasteland/
+.systemshock2/
+.scumm*
+.mbwarband/
