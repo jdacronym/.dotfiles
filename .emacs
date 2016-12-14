@@ -15,11 +15,7 @@
 (load "cookiejar")
 (load "secrets")
 
-(require 'magit)
-
 (global-set-key (kbd "C-x p") #'ping)
-(eval-after-load 'magit
-  (global-set-key (kbd "C-x g") #'magit-status))
 
 ;; make widnow-navigation easier
 (global-set-key (kbd "C-'") #'other-window)
@@ -170,3 +166,13 @@ defaults to the empty string")
 ;; final user setup
 (env-fix-path)
 
+;(require 'magit) ;; need to test that this exists before requiring
+(eval-after-load 'magit
+  (global-set-key (kbd "C-x g") #'magit-status))
+
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )
