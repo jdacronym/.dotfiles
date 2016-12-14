@@ -20,6 +20,7 @@
 ;; make widnow-navigation easier
 (global-set-key (kbd "C-'") #'other-window)
 (global-set-key (kbd "C-;") #'(lambda () (interactive) (switch-to-buffer (other-buffer))))
+(global-set-key (kbd "C-:") #'(lambda () (interactive) (display-buffer (other-buffer))))
 (global-set-key (kbd "C->") #'switch-to-next-buffer)
 (global-set-key (kbd "C-<") #'switch-to-prev-buffer)
 
