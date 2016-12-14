@@ -36,19 +36,22 @@
 
 (autoload 'w3m-browse-url "w3m" "Ask a WWW browser to fetch and render a URL." t)
 
-;; add bin/ and sbin/ to the path
-(add-to-list 'exec-path "/usr/local/bin")
-(add-to-list 'exec-path "/usr/local/sbin")
-
-(add-to-list 'exec-path "/opt/local/bin")
-(add-to-list 'exec-path "/opt/local/sbin")
-
+;; path stuff (kludgey, will be changed eventually)
 (defconst *orig-path* (getenv "PATH") "The original value of the PATH variable")
 (defvar current-paths (split-string *orig-path* ":") "The current path directories")
+(defvar additional-paths
+  '("/usr/local/sbin"
+    "/usr/local/bin"
+    "/opt/local/sbin"
+    "/opt/local/bin")
+  "paths to add for shells and binary search")
 
-(setq orig-gem-home (getenv "GEM_HOME"))
-(setq orig-gem-root (getenv "GEM_ROOT"))
-(setq orig-gem-path (getenv "GEM_PATH"))
+(defvar orig-gem-home (getenv "GEM_HOME"))
+(defvar orig-gem-root (getenv "GEM_ROOT"))
+(defvar orig-gem-path (getenv "GEM_PATH"))
+
+;; add bin/ and sbin/ to the path
+(mapcar #'(lambda (path) (add-to-list 'exec-path path)) additional-paths)
 
 (defun reset-paths ()
   (interactive)
@@ -60,10 +63,7 @@
   (interactive)
   (mapcar #'(lambda (path) (add-to-list 'current-paths path))
 	  ;; this list is in reverse order of how it will appear on the paths
-	  '("/usr/local/sbin"
-	    "/usr/local/bin"
-	    "/opt/local/sbin"
-	    "/opt/local/bin"))
+	  additional-paths)
   (setenv "PATH" (cl-reduce #'(lambda (acc item) (concat acc ":" item)) current-paths)))
 
 (require 'woman)
