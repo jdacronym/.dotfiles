@@ -1,5 +1,22 @@
 ;; useful goodies and ad-hoc Emacs Lisp practice
 
+(provide 'cookiejar)
+
+(defun setq-with-prompt(var prompt)
+  "Set quoted variable name var, defaulted to it's current value, with given prompt"
+  (let ((val (read-string prompt (symbol-value var))))
+    (set var val)))
+
+;; insert a string at point and, indent it to the default indentation,
+;; then return point to where it started. Useful for inserting
+;; multiline code expressions.
+(defun insert-and-indent (string)
+  (let ((start (point))
+	(buffer-window (buffer-window-if-visible (buffer-name))))
+    (insert string)
+    (indent-region start (point))
+    (set-window-point buffer-window start)))
+
 ;; auto-sharpquote. Found on endlessparentheses.com
 (defun sharpify ()
   "insert #' unless in a string or comment."
