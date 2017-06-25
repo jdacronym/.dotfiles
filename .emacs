@@ -16,6 +16,7 @@
 ;; load convenience functions and secret stuff
 (load "cookiejar")
 (load "secrets")
+(load "java")
 
 (global-set-key (kbd "C-x p") #'ping)
 
