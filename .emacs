@@ -3,9 +3,11 @@
 (scroll-bar-mode -1)
 (column-number-mode 1)
 
-(set-face-attribute 'default nil :height 180)
-(set-face-attribute 'mode-line nil :height 160)
-(set-face-attribute 'mode-line-inactive nil :height 140)
+(require 'cl-lib)
+
+(set-face-attribute 'default nil :height 140)
+(set-face-attribute 'mode-line nil :height 140)
+(set-face-attribute 'mode-line-inactive nil :height 120)
 
 (setq-default indent-tabs-mode -1)
 
@@ -176,3 +178,22 @@ defaults to the empty string")
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  )
+
+(defvar latex-file "" "LaTeX filename to compile")
+(defun latex-compile(texfile)
+  (interactive "bbuffer:")
+  (setq latex-file texfile)
+  (shell-command (concat "pdflatex " texfile) "*PDFLaTeX*")
+  (sleep-for 1)
+  (find-file-other-window (concat (substring texfile 0 (string-match "\.tex$" texfile))
+				 ".pdf")))
+
+(add-hook 'php-mode-hook '(lambda ()
+                           (auto-complete-mode t)
+                           (require 'ac-php)
+                           (setq ac-sources  '(ac-source-php ) )
+                           (yas-global-mode 1)
+
+                           (define-key php-mode-map  (kbd "C-]") 'ac-php-find-symbol-at-point)   ;goto define
+                           (define-key php-mode-map  (kbd "C-t") 'ac-php-location-stack-back   ) ;go back
+                           ))
