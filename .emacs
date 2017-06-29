@@ -21,7 +21,11 @@
 (global-set-key (kbd "C-x p") #'ping)
 
 ;; make widnow-navigation easier
-(global-set-key (kbd "C-'") #'other-window)
+(let ((key (kbd "C-'")))
+  (global-set-key key #'other-window)
+  ;; the above conflicts with a keybinding in org-mode, but by default
+  ;; that command is also bound to "C-,", so we'll just unset it
+  (add-hook 'org-mode-hook  #'(lambda () (interactive) (local-unset-key key))))
 (global-set-key (kbd "C-;") #'(lambda () (interactive) (switch-to-buffer (other-buffer))))
 (global-set-key (kbd "C-:") #'(lambda () (interactive) (display-buffer (other-buffer))))
 (global-set-key (kbd "C->") #'switch-to-next-buffer)
