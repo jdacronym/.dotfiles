@@ -85,7 +85,7 @@
  ;; If there is more than one, they won't work right.
  '(custom-safe-themes
    (quote
-    ("ed4b75a4f5cf9b1cd14133e82ce727166a629f5a038ac8d91b062890bc0e2d1b" "afbb40954f67924d3153f27b6d3399df221b2050f2a72eb2cfa8d29ca783c5a8" "bb4733b81d2c2b5cdec9d89c111ef28a0a8462a167d411ced00a77cfd858def1" "1e90834a232ff3b63c41b00e484754293a5c38d73080ddc6f77db72feb0b2f98" "49b36c626548d200f97144cedb44f0a48020fda221b9e2930dc7d95ef4013eb1" "40f6a7af0dfad67c0d4df2a1dd86175436d79fc69ea61614d668a635c2cd94ab" default)))
+    ("95f80c9b1ae8afcc2c8d66750252b4d6ae19aef46c2d458c5fe5911e6f09d0ce" "ed4b75a4f5cf9b1cd14133e82ce727166a629f5a038ac8d91b062890bc0e2d1b" "afbb40954f67924d3153f27b6d3399df221b2050f2a72eb2cfa8d29ca783c5a8" "bb4733b81d2c2b5cdec9d89c111ef28a0a8462a167d411ced00a77cfd858def1" "1e90834a232ff3b63c41b00e484754293a5c38d73080ddc6f77db72feb0b2f98" "49b36c626548d200f97144cedb44f0a48020fda221b9e2930dc7d95ef4013eb1" "40f6a7af0dfad67c0d4df2a1dd86175436d79fc69ea61614d668a635c2cd94ab" default)))
  '(inhibit-startup-screen t)
  '(package-selected-packages
    (quote
@@ -211,4 +211,6 @@ defaults to the empty string")
                            ))
 
 ;; TODO: set faces for different contexts in a more robust way
-(set-face-attribute 'default nil :family "Monospace")
+
+(if (not (equal "lintel" (system-name)))
+    (set-face-attribute 'default nil :family "Monospace"))
