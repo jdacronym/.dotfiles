@@ -17,6 +17,7 @@
 (load "cookiejar")
 (load "secrets")
 (load "java")
+(load "ruby")
 
 (global-set-key (kbd "C-x p") #'ping)
 
@@ -24,8 +25,9 @@
 (let ((key (kbd "C-'")))
   (global-set-key key #'other-window)
   ;; the above conflicts with a keybinding in org-mode, but by default
-  ;; that command is also bound to "C-,", so we'll just unset it
-  (add-hook 'org-mode-hook  #'(lambda () (interactive) (local-unset-key key))))
+  ;; that command is also bound to "C-,", so we'll override it
+  ;; TODO: make this work, somehow?
+  (add-hook 'org-mode-hook  #'(lambda () (interactive) (local-set-key key #'other-window))))
 (global-set-key (kbd "C-;") #'(lambda () (interactive) (switch-to-buffer (other-buffer))))
 (global-set-key (kbd "C-:") #'(lambda () (interactive) (display-buffer (other-buffer))))
 (global-set-key (kbd "C->") #'switch-to-next-buffer)
@@ -81,8 +83,13 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(custom-safe-themes (quote ("ed4b75a4f5cf9b1cd14133e82ce727166a629f5a038ac8d91b062890bc0e2d1b" "afbb40954f67924d3153f27b6d3399df221b2050f2a72eb2cfa8d29ca783c5a8" "bb4733b81d2c2b5cdec9d89c111ef28a0a8462a167d411ced00a77cfd858def1" "1e90834a232ff3b63c41b00e484754293a5c38d73080ddc6f77db72feb0b2f98" "49b36c626548d200f97144cedb44f0a48020fda221b9e2930dc7d95ef4013eb1" "40f6a7af0dfad67c0d4df2a1dd86175436d79fc69ea61614d668a635c2cd94ab" default)))
- '(inhibit-startup-screen t))
+ '(custom-safe-themes
+   (quote
+    ("ed4b75a4f5cf9b1cd14133e82ce727166a629f5a038ac8d91b062890bc0e2d1b" "afbb40954f67924d3153f27b6d3399df221b2050f2a72eb2cfa8d29ca783c5a8" "bb4733b81d2c2b5cdec9d89c111ef28a0a8462a167d411ced00a77cfd858def1" "1e90834a232ff3b63c41b00e484754293a5c38d73080ddc6f77db72feb0b2f98" "49b36c626548d200f97144cedb44f0a48020fda221b9e2930dc7d95ef4013eb1" "40f6a7af0dfad67c0d4df2a1dd86175436d79fc69ea61614d668a635c2cd94ab" default)))
+ '(inhibit-startup-screen t)
+ '(package-selected-packages
+   (quote
+    (w3m mastodon markdown-preview-mode markdown-mode+ markdown-mode gh-md flymd ubuntu-theme magit))))
 
 (setq speak-command "say")
 
@@ -202,3 +209,6 @@ defaults to the empty string")
                            (define-key php-mode-map  (kbd "C-]") 'ac-php-find-symbol-at-point)   ;goto define
                            (define-key php-mode-map  (kbd "C-t") 'ac-php-location-stack-back   ) ;go back
                            ))
+
+;; TODO: set faces for different contexts in a more robust way
+(set-face-attribute 'default nil :family "Monospace")
