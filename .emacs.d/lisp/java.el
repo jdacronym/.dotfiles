@@ -1,4 +1,5 @@
 (require 'cookiejar)
+(require 'cl-lib)
 
 ;; convenience functions I wrote while working on Java code. Hopefully these
 ;; will be useful at work. They're not pretty and need a LOT of refactoring.

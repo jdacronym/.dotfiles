@@ -1,4 +1,5 @@
 (require 'ruby-mode)
+(require 'cl-lib)
 
 (defun bundle-exec-rspec ()
   (interactive)

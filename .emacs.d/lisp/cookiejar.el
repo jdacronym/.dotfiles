@@ -1,6 +1,7 @@
 ;; useful goodies and ad-hoc Emacs Lisp practice
 
 (provide 'cookiejar)
+(require 'cl-lib)
 
 (defun setq-with-prompt(var prompt)
   "Set quoted variable name var, defaulted to it's current value, with given prompt"
