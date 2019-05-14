@@ -9,8 +9,24 @@
 	   "bundle exec rspec;")
    "*RSpec*"))
 
+(defun bundle-exec-rake-spec ()
+  (interactive)
+  (async-shell-command
+   (concat "source ~/.bashrc;"
+	   "cd " (ruby-project-root-for-file (buffer-file-name)) ";"
+	   "bundle exec rake spec;")
+   "*RSpec*"))
+
 (add-to-list 'ruby-mode-hook (lambda () (interactive)
 			       (local-set-key (kbd "C-x t") #'bundle-exec-rspec)))
+
+(defun bundle-install ()
+  (interactive)
+  (async-shell-command
+   (concat "source ~/.bashrc;"
+	   "cd " (ruby-project-root-for-file (buffer-file-name)) ";"
+	   "bundle install;")
+   "*Bundle Install*"))
 
 (defun ruby-lib-or-app-file-path (filename)
   (cond ((string-match-p "app/" filename) (replace-regexp-in-string "app\/" "spec/" filename))
