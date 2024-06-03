@@ -218,43 +218,15 @@ C-u controls number of pings."
     (interactive)
     (shell-command "`aws ecr get-login 2>&1 | sed -n 's/.e none//p'`"))
 
-(defvar docker-last-container nil "the name of the last docker container that was run")
-
-(defun docker-read-container-name ()
-  (interactive)
-  (let* ((region (let ((repo (read-string "Region: " "east")))
-                   (cond ((string-equal repo "east") 'east)
-                         ((string-equal repo "west") 'west)
-                         ('t                         'east))))
-         (repository (if (eq region 'east)
-                         "584878871707.dkr.ecr.us-east-1.amazonaws.com/ads"
-                       "584878871707.dkr.ecr.us-west-2.amazonaws.com/ads"))
-         (service (read-string "Service: " "services-common"))
-         (version (read-string "Version: " "0.0.0-SNAPSHOT")))
-    (let ((container (format "%s:%s-%s" repository service version)))
-      (setq docker-last-container container)
-      container)))
-
-;; (call-interactively #'docker-read-container-name)
-
-(defun docker-get-container-name (&optional container)
-  (interactive)
-  (cond ((and (null container) (null docker-last-container)) (call-interactively #'docker-read-container-name))
-        ('t (read-string "Container: " docker-last-container))))
-
-;;(setq docker-last-container nil)
-;;(call-interactively #'docker-get-container-name)
-
 (defun docker-pull-container (&optional container)
-  (interactive (list (docker-get-container-name)))
-  (setq docker-last-container container)
+  (interactive)
   (shell-command (format "`aws ecr get-login 2>&1 | sed -n 's/.e none//p'` && docker pull %s" container)))
 
 (defun run-docker-container (&optional container environment region)
   (interactive
    (let ((container (read-string "Container: " docker-last-container))
-         (environment (read-string "Environment: " "stg1"))
-         (region (read-string "Region: " "us-east-1")))
+         (environment (read-string "Environment: " "staging"))
+         (region (read-string "Region: " "us-west-2")))
      (list container environment region)))
   (setq docker-last-container container)
   (let ((procname (format "*docker<%s>*" container)))
