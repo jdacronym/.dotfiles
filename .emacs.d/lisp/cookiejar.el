@@ -1,13 +1,39 @@
 ;; useful goodies and ad-hoc Emacs Lisp practice
 
 (require 'cl-lib)
+(require 'w3m)
+(require 'noxml-fold)
 
-(defun setq-with-prompt(var prompt)
+(defun setq-with-prompt (var prompt)
   "Set quoted variable name var, defaulted to it's current value, with given prompt"
   (let ((val (read-string prompt (symbol-value var))))
     (set var val)))
 
-;; insert a string at point and, indent it to the default indentation,
+(eval-after-load 'w3m
+  (lambda ()
+    (defun w3m-set-width (&optional columns justify)
+      "Uses #'set-window-margins to confine the column width of an w3m buffer"
+      (interactive)
+      (unless (and (not (null columns))
+                   (numberp columns)
+                   (integerp columns)
+                   (> (window-width) 0))
+        (setq columns 66))
+      (when (eq major-mode 'w3m-mode)
+        (let (frame-width diff l-margin r-margin)
+          (setq frame-width (frame-width))
+          (setq diff (max 0 (- frame-width columns)))
+          (cond ((eq justify 'right)
+                 (message "right justify")
+                 (setq l-margin diff)
+                 (setq r-margin 0))
+                ('t
+                 (setq l-margin 0)
+                 (setq r-margin diff)))
+          (set-window-margins (selected-window) l-margin r-margin)
+          (w3m-redisplay-this-page))))))
+
+;; insert a string at point and indent it to the default indentation,
 ;; then return point to where it started. Useful for inserting
 ;; multiline code expressions.
 (defun insert-and-indent (string)
@@ -41,21 +67,21 @@
 (defvar curl-url "http://www.example.com/")
 (defvar curl-post-body "")
 (defvar curl-cookie-header "")
-
-(defun curl-reset-defaults ()
-  (interactive)
-  (setq curl-url "http://www.example.com/")
-  (setq curl-post-body ""))
-
-(defun curl-post-opts (body &optional content-type)
-  (concat "-vvv -XPOST "
-	  (if (null content-type)
-	      (concat "--data-urlencode '" body "'")
-	    (concat "--data '" body "' " "-H 'content-type: " content-type "'"))))
+(defvar curl-user-agent "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:54.0) Gecko/20100101 Firefox/54.0"
+  "The User-Agent used with cURL")
+(defvar curl-accept-encoding "gzip, deflate"
+  "The encodings you'll accept")
 
 (defun curl-buffer-name (url)
   "Used to set the buffer name in do-curl if a buffer name is not provided"
   (concat "*curl*<" url ">"))
+
+(defun de-cr-current-buffer ()
+  "Remove carriage returns from the current buffer"
+  (save-excursion
+    (set-window-point nil 0)
+    (while (re-search-forward "" nil t)
+      (replace-match "" nil nil))))
 
 (defun do-curl (url opts &optional buffer switch callback)
   (let ((buffer-name (if (null buffer) (curl-buffer-name url) buffer)))
@@ -66,40 +92,13 @@
 	  (apply callback '())))
     (if switch (switch-to-buffer-other-window buffer-name))))
 
-(defun curl (url opts)
-  "GET a given URL. quotes the URL, so you can use query strings without fear."
-  (interactive
-   (let ((url (read-string "url: " curl-url))
-	 (opts (read-string "opts: " "-vvv")))
-     (list url opts)))
-  (setq curl-url url)
-  (do-curl url opts))
-
-(defun curl-post (url body)
-  "POST a BODY given URL. quotes the URL, so you can use query strings without fear."
-  (interactive
-   (let ((url (read-string "url: " curl-url))
-	 (body (read-string "body: " curl-post-body)))
-     (list url body)))
-  (setq curl-post-body body)
-  (do-curl url (curl-post-opts body)))
-
-(defun curl-post-buffer (url body)
-  (interactive
-   (let ((url (read-string "url: " curl-url))
-	 (buffer (read-string "buffer: " (buffer-name))))
-     (with-current-buffer buffer
-       (list url (buffer-string)))))
-  (setq curl-url url)
-  (do-curl url (curl-post-opts body)))
-
 (defun curl-cookie-header-for (cookie-string)
   "takes a cookie string (which may be nil) and returns a Cookie header"
   (cond ((null cookie-string) "")
 	((string-empty-p cookie-string) "")
 	('t (concat "Cookie: " cookie-string))))
 
-(defun curl-post-buffer-file (url fname cookie)
+(defun curl-post-buffer-file (url fname cookie &optional referer user-agent encoding)
   (interactive
    (let* ((url (read-string "url: " curl-url))
 	  (fname (read-string "filename: " (buffer-file-name)))
@@ -107,7 +106,7 @@
 	  (referer (read-string "Referer: " url))
 	  (user-agent (read-string "User-Agent: " curl-user-agent))
 	  (encoding (read-string "Accept-Encoding: " curl-accept-encoding)))
-     (list url fname cookie referrer user-agent encoding)))
+     (list url fname cookie referer user-agent encoding)))
   (setq curl-url url)
   (setq curl-cookie-header cookie)
   (do-curl url (concat "-vvv --data @" fname
@@ -117,57 +116,43 @@
 		       " -H 'User-Agent: " user-agent "'"
 		       )))
 
-(defvar curl-user-agent "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:54.0) Gecko/20100101 Firefox/54.0"
-  "The User-Agent used with cURL")
-(defvar curl-accept-encoding "gzip, deflate"
-  "The encodings you'll accept")
-
 (defun curl-process (url &rest args)
   "Similar to #'curl, but uses #'call-process rather than start a terminal"
   (let ((bufname (curl-buffer-name url))
         (errfile ".tmp-curl-error"))
     (if (file-exists-p errfile) (delete-file errfile))
     (if (buffer-live-p (get-buffer bufname)) (kill-buffer bufname))
-    (apply #'call-process "curl" nil (list bufname errfile) 't url "-vvv" args)
+    (apply #'call-process "curl" nil (list bufname errfile) 't url "-vvv" "--silent" args)
     (find-file errfile)
+    (de-cr-current-buffer)
+    (save-buffer)
     (let ((str (buffer-string)))
-      (message "stderr output was %s" str)
       (set-buffer bufname)
-      (cond ((string-match-p "application\/json" str)
+      (cond ((string-match-p "< [Cc]ontent-[Tt]ype: application\/json" str)
              (javascript-mode)
-             (json-pretty-print (point-min) (point-max)))
-            ((string-match-p "application\/xml" str)
+             (json-pretty-print-buffer))
+            ((or (string-match-p "< [Cc]ontent-[Tt]ype: application\/xml" str)
+                 (string-match-p "< [Cc]ontent-[Tt]ype: text\/xml" str)
+                 (string-match-p "< [Cc]ontent-[Tt]ype: text\/html" str))
              (xml-mode)
              (noxml-fold-mode)
-             (prettify-xml-response))
-            ('t nil)))
-    (kill-buffer errfile)
-    (display-buffer bufname)))
-
-(defun prettify-xml-response ()
-  ;; I go back and forth here in hope that it's more efficient
-  ;; collapse empty lines
-  (replace-regexp "\n[ ]*\n" "\n" nil (point-min) (point-max))
-  ;; add newlines
-  (replace-regexp ">" ">\n" nil (point-min) (point-max))
-  (replace-regexp "</" "\n</" nil (point-min) (point-max))
-  ;; collapse any remaining blank lines
-  (replace-regexp "\n[ ]*\n" "\n" nil (point-min) (point-max))
-  ;; indent
-  (indent-region (point-min) (point-max)))
-
-(defun curl-post-json (url body)
-  "POST a BODY given URL. quotes THE URL, so you can use query strings without fear."
-  (interactive
-   (let ((url (read-string "url: " curl-url))
-	 (body (read-string "body: " curl-post-body)))
-     (list url body)))
-  (setq curl-post-body body)
-  (do-curl url (curl-post-opts body "application/json")))
-
-;;(do-curl slack-external-message-url (curl-post-opts "{\"text\":\"<http://i138.photobucket.com/albj;ums/q255/gavdiggity/Scanners.gif|Mind. Blown.>\", \"icon_emoji\": \":boom:\", \"username\":\"WAT\"}" "application/json"))
+             (sgml-pretty-print))
+            ('t nil))
+      (cond ((and (string-match-p "< [Cc]ontent-[Ll]ength:" str)
+                  (not (string-match-p "< [Cc]ontent-[Ll]ength: [^0]" str)))
+             (display-buffer bufname)
+             (find-file errfile)
+             (message "Response has no content"))
+            ((string-match-p "< HTTP/[0-9][0-9.]* 204" str)
+             (find-file errfile)
+             (message "204 No Content"))
+            ('t
+             (display-buffer bufname)
+             (kill-buffer errfile)
+             (message "got response body"))))))
 
 (provide 'curl)
+
 (defun window-name (win)
   "#'buffer-name, but for windows"
   (buffer-name (window-buffer win)))
@@ -185,8 +170,6 @@
                         (frame-list)
                         :initial-value nil)
              :initial-value nil))
-;; (buffer-window-if-visible "*shell*")
-;; (buffer-is-visible-p "*shell*")
 
 (defun select-buffer-window-or-switch (name)
   "If a buffer with name NAME is visible, select the window displaying that buffer. Othewise, switch the current window to that buffer."
@@ -197,26 +180,8 @@
 (defun buffer-is-visible-p (name)
   (if (not (null (buffer-window-if-visible name))) 't))
 
-(defun showable-shell-window (name prefix command)
-  (let ((cmd (concat prefix command)))
-    (lambda (&optional show)
-      (interactive "P")
-      (if (null show)
-	  (progn
-	    (async-shell-command cmd name)
-	    ;;(close-buffer-window name)
-	    )
-	(select-buffer-window-or-switch name)))))
-
-(defun wait-for-process-end (buffer-or-name)
-  (let ((buf (get-buffer buffer-or-name)))
-    (with-current-buffer buf
-      (sleep-for 500)
-      (while mode-line-process
-	(sleep-for 1000)))))
-
 (defun ping (arg)
-  "Ping Google Primary DNS. A reliable connectivity test.
+  "Ping Google Primary DNS. A connectivity test.
 
 C-u controls number of pings."
   (interactive "P")
@@ -228,57 +193,14 @@ C-u controls number of pings."
            (height (window-height win)))
       (unless (buffer-is-visible-p name)
         (switch-to-buffer-other-window name))
-      (window-resize win (- 5 (window-height win))))))
+      (progn
+        (window-resize win (- 5 (window-height win)))))))
+
 ;; set ping as a command
 (global-set-key (kbd "C-x p") #'ping)
 
-;; setting Emacs colors
-(defun amber-mode ()
-  "Set Emacs to a warm amber and black color scheme."
-  (interactive)
-  (let ((amber "#F0A000"))
-    (color-on-color-mode amber "black" 't)))
-
-(defun seafoam-mode ()
-  "Set Emacs to a seafoam green color on black."
-  (interactive)
-  (let ((seafoam "#AAFFAA"))
-    (color-on-color-mode seafoam "black" 't)))
-
-(defun high-contrast-mode ()
-  "A high-contrast mode for outdoor use"
-  (interactive)
-  (color-on-color-mode "black" "white"))
-
-(defun wy-mode ()
-  "Set foreground colors to Weyland-Yutani cyan."
-  (interactive)
-  (let ((wy "#F0FFF0"))
-    (color-on-color-mode wy "black" 't)))
-
-(defun color-on-color-mode (color1 color2 &optional dark)
-  (set-foreground-color color1)
-  (set-background-color color2)
-  (let ((inactive-fg (if dark "grey80" "black"))
-        (inactive-bg (if dark color2 "grey80")))
-    (message inactive-fg)
-    (custom-set-faces
-     ;; TODO improve this, maybe with macros, or something other than
-     ;; custom-set-faces
-     (list 'mode-line
-           (list (list 't (list :foreground color2
-                                :background color1
-                                :box (list :line-width -1
-                                           :color color1
-                                           :style 'released-button)))))
-     (list 'mode-line-inactive
-           (list (list 't (list :inherit 'mode-line
-                                :foreground inactive-fg
-                                :background inactive-bg
-                                :box (list :line-width -1 :color color1)
-                                :weight 'light)))))))
-
 (defun shell-command-maybe-region (command)
+  "Interactive command to run (if active) the highlighted text as a shell command. Inspired by Plan 9 from Bell Labs' click-to-execute default shell behavior."
   (interactive
    (let ((command-string (read-string "$ " (if (region-active-p)
                                                (let ((begin (region-beginning))
@@ -328,11 +250,6 @@ C-u controls number of pings."
   (setq docker-last-container container)
   (shell-command (format "`aws ecr get-login 2>&1 | sed -n 's/.e none//p'` && docker pull %s" container)))
 
-
-;; (shell-command "`source ~/.bashrc; aws ecr get-login 2>&1 | sed -n 's/.e none//p'`")
-;; (shell-command "`aws configure`")
-;;(call-interactively #'docker-pull-container)
-
 (defun run-docker-container (&optional container environment region)
   (interactive
    (let ((container (read-string "Container: " docker-last-container))
@@ -353,19 +270,60 @@ C-u controls number of pings."
     (send-string procname "java -jar integration-service.jar &\n")
     (pop-to-buffer procname)))
 
+(defun chrome-open (url)
+  (call-process "open" nil nil nil "-a" "Google Chrome" url))
 
-(defvar current-local-shell-command "gradlew test")
+(defun firefox-open (url)
+  (call-process "open" nil nil nil "-a" "Firefox" url))
 
-(defun bind-local-shell-command (key-string shell-command)
-  "Locally binds a keychord to a command sent to the *shell*
-  process. Requires *shell* to be running."
-  (interactive
-   (let ((key-string (read-string "key chord: " "C-x t"))
-         (shell-command (read-string "$ " current-local-shell-command)))
-     (list key-string (format "%s\n" shell-command))))
-  (message "Binding shell command '%s' to keychord '%s'" key-string shell-command)
-  (setq current-local-shell-command shell-command)
-  (let ((fn (lambda () (interactive) (send-string "*shell*" current-local-shell-command))))
-    (local-set-key (kbd key-string) fn)))
+(eval-after-load 'dap-java
+  (lambda ()
+    (defun dap-java-run-test-project ()
+      (interactive)
+      (-let* ((to-run (lsp-java--get-root))
+              (test-class-name (cl-first (s-split "#" (dap-java-test-class))))
+              (class-path (->> (with-lsp-workspace (lsp-find-workspace 'jdtls)
+                                 (lsp-send-execute-command "vscode.java.resolveClasspath"
+                                                           (vector test-class-name nil)))
+                               cl-second
+                               (s-join dap-java--classpath-separator)))
+
+              ;; (package-includes (->> (with-lsp-workspace
+              ;;                            (lsp-find-workspace 'jdtls)
+              ;;                          (lsp-send-execute-command "vscode.java.test.search.items"
+              ;;                                                    (vector (lsp--json-serialize `(:uri ,(lsp--path-to-uri to-run) :level 1)))))
+              ;;                        (mapcar (lambda (h) (gethash "displayName" h)))
+              ;;                        (mapcar (lambda (p) (format "--select-package=%s" p)))
+              ;;                        (s-join " ")))
+              (prog-list (if dap-java-use-testng
+                             nil ;; testNg not supported
+                           (cl-list* dap-java-java-command "-jar" dap-java-test-runner
+                                     "-cp" (format dap-java--var-format "JUNIT_CLASS_PATH")
+                                     ;;"-d" to-run ;; run root directory (doesn't work not recursive)
+                                     ;;"--scan-modules" ;; scan all modules?
+                                     "--scan-classpath"
+                                     "--include-engine=junit-jupiter"
+                                     "--exclude-engine=junit-vintage"
+                                     dap-java-test-additional-args
+                                     )))
+              (command (list :program-to-start (s-join " " prog-list)
+                             :environment-variables `(("JUNIT_CLASS_PATH" . ,class-path))
+                             :name to-run
+                             :cwd (lsp-java--get-root))))
+        (setq dap-java--latest-test (-> command (plist-put :skip-debug-session t)))
+        (dap-start-debugging dap-java--latest-test)
+        ))))
+
+(defun xml-snip ()
+  "Grab the region, which hopefully contains XML, copy it into a new buffer and format it for easier reading."
+  (interactive)
+  (when (region-active-p)
+    (let ((substr (buffer-substring (region-beginning) (region-end))))
+      (pop-to-buffer "*formatted-xml*")
+      (xml-mode)
+      (rename-uniquely)
+      (insert substr)
+      (sgml-pretty-print 0 (buffer-end))
+      (setq-local truncate-lines 't))))
 
 (provide 'cookiejar)
